@@ -2,8 +2,10 @@ import { BrowserRouter, Route, Routes } from 'react-router';
 import TaskList from './components/views/TaskList';
 import Login from './components/views/Login';
 import Logout from './components/views/Logout';
-//import 'antd/dist/antd.css';
+import Register from './components/views/Register';
 import './App.css';
+
+
 
 function App() {
   return (
@@ -12,6 +14,7 @@ function App() {
         <Route path="/" element={<TaskList />} />
         <Route path="/login" element={<Login />} />
         <Route path="/logout" element={<Logout />} />
+        <Route path='/register' element={<Register />}/>
       </Routes>
     </BrowserRouter>
   );

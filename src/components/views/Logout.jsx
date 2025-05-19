@@ -2,11 +2,11 @@ import { useEffect } from "react";
 import { useNavigate } from "react-router";
 
 export default function Logout() {
-  // TODO import user session store, extract logout function
   const navigate = useNavigate();
-
+  localStorage.removeItem("token");
   useEffect(() => {
-    // TODO run logout function to clear session token
+    
+    setToken(null);
     navigate("/login");
   }, [navigate]);
 
