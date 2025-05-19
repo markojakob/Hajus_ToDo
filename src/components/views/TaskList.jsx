@@ -1,35 +1,27 @@
 import { DeleteOutlined } from "@ant-design/icons";
-import {
-  Input,
-  Button,
-  Checkbox,
-  List,
-  Col,
-  Row,
-  Space,
-  Divider,
-  message,
-} from "antd";
+import { Input, Button, Checkbox, List, Col, Row, Space, Divider, message } from "antd";
 import { produce } from "immer";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
 
 export default function TaskList() {
   const navigate = useNavigate();
+  const token = localStorage.getItem("access_token");
   const URL = "https://demo2.z-bit.ee";
 
   const [tasks, setTasks] = useState([]);
-  // Redirect
+// Redirect
   useEffect(() => {
-    if (!token && window.location.pathname !== "/register") {
-      navigate("/login");
-      return;
-    }
+  if (!token && window.location.pathname !== "/register") {
+    navigate("/login");
+    return;
+  }
+    
 
     const fetchTasks = async () => {
       try {
         const response = await fetch(`${URL}/tasks`, {
-          method: "GET",
+          method: 'GET',  
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -143,14 +135,13 @@ export default function TaskList() {
   };
 
   return (
-    <Row justify="center" style={{ minHeight: "100vh", marginTop: "6rem" }}>
+    <Row
+      justify="center"
+      style={{ minHeight: "100vh", marginTop: "6rem" }}
+    >
       <Col span={12}>
         <h1>Task List</h1>
-        <Button
-          onClick={handleAddTask}
-          type="primary"
-          style={{ marginBottom: 16 }}
-        >
+        <Button onClick={handleAddTask} type="primary" style={{ marginBottom: 16 }}>
           Add Task
         </Button>
         <Divider />
@@ -177,11 +168,7 @@ export default function TaskList() {
                     style={{ width: 300 }}
                   />
                 </Space>
-                <Button
-                  type="text"
-                  danger
-                  onClick={() => handleDeleteTask(task)}
-                >
+                <Button type="text" danger onClick={() => handleDeleteTask(task)}>
                   <DeleteOutlined />
                 </Button>
               </Row>
