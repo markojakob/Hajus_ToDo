@@ -1,7 +1,18 @@
 import { DeleteOutlined } from "@ant-design/icons";
-import { Input, Button, Checkbox, List, Col, Row, Space, Divider, message } from "antd";
+import {
+  Input,
+  Button,
+  Checkbox,
+  List,
+  Col,
+  Row,
+  Space,
+  Divider,
+  message,
+} from "antd";
+import debounce from "lodash.debounce";
 import { produce } from "immer";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router";
 
 export default function TaskList() {
@@ -10,25 +21,47 @@ export default function TaskList() {
   const URL = "https://demo2.z-bit.ee";
 
   const [tasks, setTasks] = useState([]);
-// Redirect
+const debouncedUpdateTaskTitle = useRef(
+    debounce(async (taskId, newName) => {
+      try {
+        const response = await fetch(`${URL}/tasks/${taskId}`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ title: newName }),
+        });
+
+        if (!response.ok) {
+          message.error("Failed to update task title.");
+        }
+      } catch {
+        message.error("Error updating task title.");
+      }
+    }, 3500)
+  ).current;
+
   useEffect(() => {
-  if (!token && window.location.pathname !== "/register") {
-    navigate("/login");
-    return;
-  }
-    
+    if (!token && window.location.pathname !== "/register") {
+      navigate("/login");
+      return;
+    }
 
     const fetchTasks = async () => {
       try {
         const response = await fetch(`${URL}/tasks`, {
-          method: 'GET',  
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+          headers: { Authorization: `Bearer ${token}` },
+          method: 'GET',
         });
         if (response.ok) {
           const data = await response.json();
-          setTasks(data);
+          const mappedTasks = data.map((task) => ({
+            id: task.id,
+            name: task.title,
+            completed: task.marked_as_done,
+          }));
+          setTasks(mappedTasks);
         } else {
           navigate("/login");
         }
@@ -38,52 +71,43 @@ export default function TaskList() {
     };
 
     fetchTasks();
-  }, [navigate, token]);
+  return () => {
+      debouncedUpdateTaskTitle.cancel(); // Clean up debounce on unmount
+    };
+  }, [navigate, token, debouncedUpdateTaskTitle]);
 
-  const handleNameChange = async (task, event) => {
-    const newTitle = event.target.value;
-    const taskId = task.id;
-    const response = await fetch(`${URL}/tasks/${taskId}`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ title: newTitle }),
-    });
-    if (response.ok) {
-      const newTasks = produce(tasks, (draft) => {
+  const handleNameChange = (task, event) => {
+    const newName = event.target.value;
+
+    // Update UI immediately
+    setTasks((prev) =>
+      produce(prev, (draft) => {
         const index = draft.findIndex((t) => t.id === task.id);
-        draft[index].title = newTitle;
-      });
-      setTasks(newTasks);
-    } else {
-      const err = await response.json();
-      console.error("Failed to change title: ", err);
-      message.error("Failed to update task title.");
-    }
+        if (index !== -1) draft[index].name = newName;
+      })
+    );
+
+    debouncedUpdateTaskTitle(task.id, newName);
   };
 
   const handleCompletedChange = async (task, event) => {
-    const newState = event.target.checked;
-    const taskId = task.id;
-    const response = await fetch(`${URL}/tasks/${taskId}`, {
+    const newCompleted = event.target.checked;
+    const response = await fetch(`${URL}/tasks/${task.id}`, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify({ marked_as_done: newState }),
+      body: JSON.stringify({ marked_as_done: newCompleted }),
     });
     if (response.ok) {
-      const newTasks = produce(tasks, (draft) => {
-        const index = draft.findIndex((t) => t.id === task.id);
-        draft[index].marked_as_done = newState;
-      });
-      setTasks(newTasks);
+      setTasks(
+        produce(tasks, (draft) => {
+          const index = draft.findIndex((t) => t.id === task.id);
+          draft[index].completed = newCompleted;
+        })
+      );
     } else {
-      const err = await response.json();
-      console.error("Failed to update completion status: ", err);
       message.error("Failed to update task status.");
     }
   };
@@ -95,31 +119,30 @@ export default function TaskList() {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify({ title: "", desc: "" }),
+      body: JSON.stringify({ title: "New Task", desc: "" }), // Avoid empty title
     });
+
     if (response.ok) {
       const newTask = await response.json();
       setTasks(
         produce(tasks, (draft) => {
-          draft.push(newTask);
+          draft.push({
+            id: newTask.id,
+            name: newTask.title,
+            completed: newTask.marked_as_done,
+          });
         })
       );
     } else {
-      const err = await response.json();
-      console.error("Failed to add task: ", err);
       message.error("Failed to add task.");
     }
   };
 
   const handleDeleteTask = async (task) => {
-    const taskId = task.id;
-    const response = await fetch(`${URL}/tasks/${taskId}`, {
+    const response = await fetch(`${URL}/tasks/${task.id}`, {
       method: "DELETE",
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
+      headers: { Authorization: `Bearer ${token}` },
     });
-
     if (response.ok) {
       setTasks(
         produce(tasks, (draft) => {
@@ -128,47 +151,45 @@ export default function TaskList() {
         })
       );
     } else {
-      const err = await response.json();
-      console.error("Failed to delete task: ", err);
       message.error("Failed to delete task.");
     }
   };
 
   return (
     <Row
+      type="flex"
       justify="center"
       style={{ minHeight: "100vh", marginTop: "6rem" }}
     >
       <Col span={12}>
         <h1>Task List</h1>
-        <Button onClick={handleAddTask} type="primary" style={{ marginBottom: 16 }}>
-          Add Task
-        </Button>
+        <Button onClick={handleAddTask}>Add Task</Button>
+        <Button onClick={() => navigate("/logout")}>Logout</Button>
         <Divider />
         <List
           size="small"
           bordered
           dataSource={tasks}
           renderItem={(task) => (
+
             <List.Item key={task.id}>
               <Row
+                type="flex"
                 justify="space-between"
                 align="middle"
                 style={{ width: "100%" }}
               >
                 <Space>
                   <Checkbox
-                    checked={task.marked_as_done}
+                    checked={task.completed}
                     onChange={(e) => handleCompletedChange(task, e)}
                   />
                   <Input
-                    value={task.title}
+                    value={task.name}
                     onChange={(e) => handleNameChange(task, e)}
-                    placeholder="Task title"
-                    style={{ width: 300 }}
                   />
                 </Space>
-                <Button type="text" danger onClick={() => handleDeleteTask(task)}>
+                <Button type="text" onClick={() => handleDeleteTask(task)}>
                   <DeleteOutlined />
                 </Button>
               </Row>
