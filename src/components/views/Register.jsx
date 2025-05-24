@@ -75,6 +75,11 @@ export default function Register() {
               Register
             </Button>
           </Form.Item>
+          <Form.Item>
+            <Button type="default" onClick={() => navigate("/login")} block>
+              Back to Login
+            </Button>
+          </Form.Item>
         </Form>
       </Col>
     </Row>

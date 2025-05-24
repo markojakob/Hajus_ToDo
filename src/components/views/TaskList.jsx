@@ -19,7 +19,6 @@ export default function TaskList() {
   const navigate = useNavigate();
   const token = localStorage.getItem("access_token");
   const URL = "https://demo2.z-bit.ee";
-
   const [tasks, setTasks] = useState([]);
 const debouncedUpdateTaskTitle = useRef(
     debounce(async (taskId, newName) => {
@@ -39,7 +38,7 @@ const debouncedUpdateTaskTitle = useRef(
       } catch {
         message.error("Error updating task title.");
       }
-    }, 3500)
+    }, 1000)
   ).current;
 
   useEffect(() => {
