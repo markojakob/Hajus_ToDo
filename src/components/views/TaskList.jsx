@@ -14,14 +14,17 @@ import debounce from "lodash.debounce";
 import { produce } from "immer";
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router";
+import { v4 as uuidv4 } from "uuid";
 
 export default function TaskList() {
   const navigate = useNavigate();
   const token = localStorage.getItem("access_token");
   const URL = "https://demo2.z-bit.ee";
   const [tasks, setTasks] = useState([]);
-const debouncedUpdateTaskTitle = useRef(
+
+  const debouncedTaskTitle = useRef(
     debounce(async (taskId, newName) => {
+      if (!newName.trim()) return;
       try {
         const response = await fetch(`${URL}/tasks/${taskId}`, {
           method: "PUT",
@@ -42,10 +45,6 @@ const debouncedUpdateTaskTitle = useRef(
   ).current;
 
   useEffect(() => {
-    if (!token && window.location.pathname !== "/register") {
-      navigate("/login");
-      return;
-    }
 
     const fetchTasks = async () => {
       try {
@@ -70,15 +69,14 @@ const debouncedUpdateTaskTitle = useRef(
     };
 
     fetchTasks();
-  return () => {
-      debouncedUpdateTaskTitle.cancel(); // Clean up debounce on unmount
+    return () => {
+      debouncedTaskTitle.cancel();
     };
-  }, [navigate, token, debouncedUpdateTaskTitle]);
+  }, [navigate, token, debouncedTaskTitle]);
 
   const handleNameChange = (task, event) => {
     const newName = event.target.value;
 
-    // Update UI immediately
     setTasks((prev) =>
       produce(prev, (draft) => {
         const index = draft.findIndex((t) => t.id === task.id);
@@ -86,39 +84,42 @@ const debouncedUpdateTaskTitle = useRef(
       })
     );
 
-    debouncedUpdateTaskTitle(task.id, newName);
+    debouncedTaskTitle(task.id, newName);
   };
 
   const handleCompletedChange = async (task, event) => {
-    const newCompleted = event.target.checked;
+    const checked = event.target.checked;
     const response = await fetch(`${URL}/tasks/${task.id}`, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify({ marked_as_done: newCompleted }),
+      body: JSON.stringify({ marked_as_done: checked }),
     });
     if (response.ok) {
       setTasks(
         produce(tasks, (draft) => {
           const index = draft.findIndex((t) => t.id === task.id);
-          draft[index].completed = newCompleted;
+          draft[index].completed = checked;
+
         })
       );
+      console.log(checked)
     } else {
       message.error("Failed to update task status.");
     }
   };
 
   const handleAddTask = async () => {
+    const ID = uuidv4();
     const response = await fetch(`${URL}/tasks`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify({ title: "New Task", desc: "" }), // Avoid empty title
+      body: JSON.stringify({ id: ID, title: "New Task", desc: "" }),
     });
 
     if (response.ok) {
@@ -132,6 +133,7 @@ const debouncedUpdateTaskTitle = useRef(
           });
         })
       );
+      console.log(newTask.id);
     } else {
       message.error("Failed to add task.");
     }

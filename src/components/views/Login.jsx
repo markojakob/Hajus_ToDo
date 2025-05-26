@@ -25,7 +25,7 @@ export default function Login() {
       const data = await response.json();
       notification.success({ message: "Logged in" });
 
-      // FIX: Save token with same key your other code expects
+      
       localStorage.setItem("access_token", data.access_token);
 
       navigate("/");
